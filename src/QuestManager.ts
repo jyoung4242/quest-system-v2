@@ -1,23 +1,37 @@
 // Types
 
+// quest enabled is for quest edges to check if they can be enabled
 export type isQuestEnabled = (state: any, parentstate?: any) => boolean;
+
+// quest complete is for quest to check if they have been completed
 export type isQuestComplete = (state: any) => boolean;
+
+// quest cancelled is for quest to check if they have been cancelled
 export type isQuestCancelled = (state: any) => boolean;
+
+// onQuestComplete is the effect callback that will happen when a quest is completed
+export type onQuestComplete = (state: any) => void;
+// onQuestCancelled is the effect callback that will happen when a quest is cancelled
+export type onQuestCancelled = (state: any) => void;
 
 // rewardConfig, used to define the reference to the data store
 export type Reward<T> = T;
 
 type QuestConfig = {
+  id: string;
   name: string;
   giver: string;
   description: string;
   reward: Reward<any>;
-  complete: isQuestComplete;
-  cancelled?: isQuestCancelled;
+  isComplete: isQuestComplete;
+  isCancelled?: isQuestCancelled;
   state: any;
+  onComplete: onQuestComplete;
+  onCancelled?: onQuestCancelled;
 };
 
 type QuestEdgeConfig = {
+  id: string;
   nextQuest: Quest;
   parentQuest: Quest;
   prereqquest: isQuestEnabled;
@@ -69,8 +83,7 @@ export class QuestManager {
 }
 
 export class QuestTree {
-  id: string = QuestUUID.generateUUID();
-
+  id: string = "";
   nodes: Quest[] = [];
   edges: QuestEdge[] = [];
   constructor() {}
@@ -78,6 +91,7 @@ export class QuestTree {
   addQuest(quest: Quest, edgeConfig?: QuestEdgeConfig) {
     if (edgeConfig) {
       const edge: QuestEdgeConfig = {
+        id: edgeConfig.id,
         nextQuest: quest,
         parentQuest: edgeConfig.parentQuest,
         prereqquest: edgeConfig.prereqquest,
@@ -93,18 +107,8 @@ export class QuestTree {
   update() {}
 }
 
-/*
-type QuestEdgeConfig = {
-  nextQuest: Quest;
-  parentQuest: Quest;
-  prereqquest: isQuestEnabled;
-  state: any;
-};
-
-*/
-
 export class QuestEdge {
-  id: string = QuestUUID.generateUUID();
+  id: string = "";
   status: QuestEdgeStatus = QuestEdgeStatus.disabled;
   parent: Quest;
   prereq: isQuestEnabled;
@@ -112,6 +116,7 @@ export class QuestEdge {
   state: any;
 
   constructor(config: QuestEdgeConfig) {
+    this.id = config.id;
     this.prereq = config.prereqquest;
     this.parent = config.parentQuest;
     this.child = config.nextQuest;
@@ -128,23 +133,28 @@ export class QuestEdge {
 }
 
 export class Quest {
-  id: string = QuestUUID.generateUUID();
+  id: string = "";
   giver: string = "";
   name: string = "";
   description: string = "";
-  isCompleted: isQuestComplete;
-  isCancelled: isQuestCancelled | undefined;
+  isCompleted: isQuestComplete = () => false;
+  isCancelled: isQuestCancelled = () => false;
   status: QuestStatus = QuestStatus.Active;
   children: QuestEdge[] = [];
   state: any;
   reward: Reward<any>;
+  onComplete: onQuestComplete = () => {};
+  onCancelled: onQuestCancelled = () => {};
 
   constructor(config: QuestConfig) {
+    this.id = config.id;
     this.description = config.description;
     this.giver = config.giver;
     this.name = config.name;
-    this.isCompleted = config.complete;
-    this.isCancelled = config.cancelled;
+    this.onComplete = config.onComplete;
+    if (config.onCancelled) this.onCancelled = config.onCancelled;
+    if (config.isCancelled) this.isCancelled = config.isCancelled;
+    this.isCompleted = config.isComplete;
     this.state = config.state;
     this.reward = config.reward;
   }
@@ -164,16 +174,5 @@ export class Quest {
         // do something here when quest cancelled
       }
     }
-  }
-}
-
-export class QuestUUID {
-  static generateUUID(): string {
-    let uuid = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx";
-    return uuid.replace(/[xy]/g, function (c) {
-      const r = (Math.random() * 16) | 0;
-      const v = c === "x" ? r : (r & 0x3) | 0x8;
-      return v.toString(16);
-    });
   }
 }

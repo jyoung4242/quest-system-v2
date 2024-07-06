@@ -22,8 +22,17 @@ const game = new Engine({
   canvasElementId: "cnv", // the DOM canvas element ID, if you are providing your own
   displayMode: DisplayMode.Fixed, // the display mode
 });
-
 await game.start();
+class QuestUUID {
+  static generateUUID(): string {
+    let uuid = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx";
+    return uuid.replace(/[xy]/g, function (c) {
+      const r = (Math.random() * 16) | 0;
+      const v = c === "x" ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+}
 
 const myQuestManager = new QuestManager();
 const myTree = myQuestManager.createTree();
@@ -53,21 +62,29 @@ const questComplete: isQuestComplete = (state: any): boolean => {
 
 // make a new quest
 const myQuest = new Quest({
+  id: QuestUUID.generateUUID(),
   name: "My Quest",
   description: "My Quest Description",
   giver: "Me",
   reward: reward,
-  complete: questComplete,
+  onComplete: () => {
+    console.log("quest complete");
+  },
   state: gamestate,
+  isComplete: questComplete,
 });
 
 // make 2nd quest (child)
 const myQuest2 = new Quest({
+  id: QuestUUID.generateUUID(),
   name: "My Second Quest",
   description: "My Second Quest Description",
   giver: "Me",
   reward: reward,
-  complete: questComplete,
+  isComplete: questComplete,
+  onComplete: () => {
+    console.log("quest complete");
+  },
   state: gamestate,
 });
 
@@ -76,4 +93,10 @@ const questEnabled: isQuestEnabled = (state: any, parentstate: any): boolean => 
 };
 
 myTree.addQuest(myQuest);
-myTree.addQuest(myQuest2, { parentQuest: myQuest, prereqquest: questEnabled, state: gamestate, nextQuest: myQuest2 });
+myTree.addQuest(myQuest2, {
+  id: QuestUUID.generateUUID(),
+  parentQuest: myQuest,
+  prereqquest: questEnabled,
+  state: gamestate,
+  nextQuest: myQuest2,
+});
