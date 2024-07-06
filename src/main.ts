@@ -1,7 +1,10 @@
 import "./style.css";
 import { UI } from "@peasy-lib/peasy-ui";
 import { Engine, DisplayMode } from "excalibur";
-import { Quest, QuestManager, QuestStatus, Reward, isQuestComplete, isQuestEnabled } from "./QuestManager";
+import { QuestManager } from "./Quests/QuestManager";
+import { myQuest } from "./Quests/Quest1";
+import { myQuest2, questEnabled } from "./Quests/Quest2";
+
 const model = {};
 const template = `
 <style> 
@@ -23,7 +26,8 @@ const game = new Engine({
   displayMode: DisplayMode.Fixed, // the display mode
 });
 await game.start();
-class QuestUUID {
+
+export class QuestUUID {
   static generateUUID(): string {
     let uuid = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx";
     return uuid.replace(/[xy]/g, function (c) {
@@ -37,7 +41,7 @@ class QuestUUID {
 const myQuestManager = new QuestManager();
 const myTree = myQuestManager.createTree();
 
-const gamestate = {
+export const gamestate = {
   player: {
     gold: 0,
     exp: 0,
@@ -50,47 +54,6 @@ game.currentScene.onPreUpdate = () => {
 };
 
 console.log("myQuestManager", myQuestManager);
-
-const reward: Reward<{}> = {
-  gold: 100,
-  exp: 100,
-};
-
-const questComplete: isQuestComplete = (state: any): boolean => {
-  return state.player.monstersKilled >= 5;
-};
-
-// make a new quest
-const myQuest = new Quest({
-  id: QuestUUID.generateUUID(),
-  name: "My Quest",
-  description: "My Quest Description",
-  giver: "Me",
-  reward: reward,
-  onComplete: () => {
-    console.log("quest complete");
-  },
-  state: gamestate,
-  isComplete: questComplete,
-});
-
-// make 2nd quest (child)
-const myQuest2 = new Quest({
-  id: QuestUUID.generateUUID(),
-  name: "My Second Quest",
-  description: "My Second Quest Description",
-  giver: "Me",
-  reward: reward,
-  isComplete: questComplete,
-  onComplete: () => {
-    console.log("quest complete");
-  },
-  state: gamestate,
-});
-
-const questEnabled: isQuestEnabled = (state: any, parentstate: any): boolean => {
-  return parentstate.status == QuestStatus.Completed;
-};
 
 myTree.addQuest(myQuest);
 myTree.addQuest(myQuest2, {

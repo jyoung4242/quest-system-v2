@@ -11,6 +11,7 @@ export type isQuestCancelled = (state: any) => boolean;
 
 // onQuestComplete is the effect callback that will happen when a quest is completed
 export type onQuestComplete = (state: any) => void;
+
 // onQuestCancelled is the effect callback that will happen when a quest is cancelled
 export type onQuestCancelled = (state: any) => void;
 
