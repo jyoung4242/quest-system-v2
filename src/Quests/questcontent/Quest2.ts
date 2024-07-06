@@ -1,5 +1,6 @@
-import { Quest, QuestStatus, Reward, isQuestComplete, isQuestEnabled } from "../QuestManager";
-import { gamestate, QuestUUID, myTree } from "../../main";
+import { QuestConfig, QuestStatus, Reward, isQuestComplete, isQuestEnabled } from "../QuestManager";
+import { QuestUUID } from "../../utility";
+import { gamestate } from "../../gamestate";
 
 const reward: Reward<{}> = {
   gold: 100,
@@ -9,22 +10,20 @@ const reward: Reward<{}> = {
 const questComplete: isQuestComplete = (state: any): boolean => {
   return state.player.monstersKilled >= 5;
 };
-// make a new quest
 
-// make 2nd quest (child)
-export const myQuest2 = myTree.createQuest({
+export const questEnabled: isQuestEnabled = (state: any, parentstate: any): boolean => {
+  return parentstate.status == QuestStatus.Completed;
+};
+
+export const quest2Config: QuestConfig = {
   id: QuestUUID.generateUUID(),
   name: "My Second Quest",
   description: "My Second Quest Description",
   giver: "Me",
   reward: reward,
-  isComplete: questComplete,
   onComplete: () => {
     console.log("quest complete");
   },
+  isComplete: questComplete,
   state: gamestate,
-});
-
-export const questEnabled: isQuestEnabled = (state: any, parentstate: any): boolean => {
-  return parentstate.status == QuestStatus.Completed;
 };

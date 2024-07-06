@@ -26,7 +26,7 @@ type MyEventDetail = {
   quest: Quest;
 };
 
-type QuestConfig = {
+export type QuestConfig = {
   id: string;
   name: string;
   giver: string;
@@ -135,7 +135,21 @@ export class QuestTree {
     return new Quest(quest, this);
   }
 
+  getQuestID(questname: string): string | undefined {
+    const foundquests = this.nodes.find(q => q.name === questname);
+    if (foundquests) return foundquests.id;
+    return undefined;
+  }
+
+  getQuest(id: string): Quest | undefined {
+    const foundquests = this.nodes.find(q => q.id === id);
+    if (foundquests) return foundquests;
+    return undefined;
+  }
+
   addQuest(quest: Quest, edgeConfig?: QuestEdgeConfig) {
+    console.log("adding quest", quest);
+
     if (edgeConfig) {
       const edge: QuestEdgeConfig = {
         id: edgeConfig.id,
