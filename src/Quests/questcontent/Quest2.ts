@@ -1,5 +1,5 @@
 import { Quest, QuestStatus, Reward, isQuestComplete, isQuestEnabled } from "../QuestManager";
-import { gamestate, QuestUUID } from "../../main";
+import { gamestate, QuestUUID, myTree } from "../../main";
 
 const reward: Reward<{}> = {
   gold: 100,
@@ -12,7 +12,7 @@ const questComplete: isQuestComplete = (state: any): boolean => {
 // make a new quest
 
 // make 2nd quest (child)
-export const myQuest2 = new Quest({
+export const myQuest2 = myTree.createQuest({
   id: QuestUUID.generateUUID(),
   name: "My Second Quest",
   description: "My Second Quest Description",

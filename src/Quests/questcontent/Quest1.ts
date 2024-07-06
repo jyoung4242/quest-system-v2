@@ -1,5 +1,5 @@
 import { Quest, Reward, isQuestComplete } from "../QuestManager";
-import { gamestate, QuestUUID } from "../../main";
+import { gamestate, QuestUUID, myTree } from "../../main";
 
 const reward: Reward<{}> = {
   gold: 100,
@@ -10,7 +10,7 @@ const questComplete: isQuestComplete = (state: any): boolean => {
   return state.player.monstersKilled >= 5;
 };
 
-export const myQuest = new Quest({
+export const myQuest = myTree.createQuest({
   id: QuestUUID.generateUUID(),
   name: "My Quest",
   description: "My Quest Description",
