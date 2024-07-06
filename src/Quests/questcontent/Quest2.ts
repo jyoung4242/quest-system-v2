@@ -1,5 +1,5 @@
-import { Quest, QuestStatus, Reward, isQuestComplete, isQuestEnabled } from "./QuestManager";
-import { gamestate, QuestUUID } from "../main";
+import { Quest, QuestStatus, Reward, isQuestComplete, isQuestEnabled } from "../QuestManager";
+import { gamestate, QuestUUID } from "../../main";
 
 const reward: Reward<{}> = {
   gold: 100,

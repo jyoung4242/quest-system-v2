@@ -2,8 +2,8 @@ import "./style.css";
 import { UI } from "@peasy-lib/peasy-ui";
 import { Engine, DisplayMode } from "excalibur";
 import { QuestManager } from "./Quests/QuestManager";
-import { myQuest } from "./Quests/Quest1";
-import { myQuest2, questEnabled } from "./Quests/Quest2";
+import { myQuest } from "./Quests/questcontent/Quest1";
+import { myQuest2, questEnabled } from "./Quests/questcontent/Quest2";
 
 const model = {};
 const template = `
