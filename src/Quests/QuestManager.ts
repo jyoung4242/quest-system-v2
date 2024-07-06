@@ -10,13 +10,21 @@ export type isQuestComplete = (state: any) => boolean;
 export type isQuestCancelled = (state: any) => boolean;
 
 // onQuestComplete is the effect callback that will happen when a quest is completed
-export type onQuestComplete = (state: any) => void;
+export type onQuestComplete = (quest: Quest, state: any) => void;
 
 // onQuestCancelled is the effect callback that will happen when a quest is cancelled
-export type onQuestCancelled = (state: any) => void;
+export type onQuestCancelled = (quest: Quest, state: any) => void;
 
 // rewardConfig, used to define the reference to the data store
 export type Reward<T> = T;
+
+// Events
+
+// onQuestComplete when a quest is completed
+// onQuestCancelled when a quest is cancelled
+type MyEventDetail = {
+  quest: Quest;
+};
 
 type QuestConfig = {
   id: string;
@@ -27,7 +35,7 @@ type QuestConfig = {
   isComplete: isQuestComplete;
   isCancelled?: isQuestCancelled;
   state: any;
-  onComplete: onQuestComplete;
+  onComplete?: onQuestComplete;
   onCancelled?: onQuestCancelled;
 };
 
@@ -58,11 +66,16 @@ export class QuestManager {
   activeQuest: Quest | undefined;
   completedQuests: QuestTree[] = [];
   cancelledQuests: QuestTree[] = [];
+  onComplete: (quest: Quest, state: any) => void;
+  onCancelled: (quest: Quest, state: any) => void;
 
-  constructor() {}
+  constructor() {
+    this.onComplete = this.defaultOnQuestComplete;
+    this.onCancelled = this.defaultOnQuestCancelled;
+  }
 
   createTree() {
-    const newQuestTree = new QuestTree();
+    const newQuestTree = new QuestTree(this.onComplete, this.onCancelled);
     this.openQuests.push(newQuestTree);
     return newQuestTree;
   }
@@ -78,6 +91,29 @@ export class QuestManager {
     this.activeQuest = quest;
   }
 
+  defaultOnQuestComplete(quest: Quest, state: any): void {
+    // move quest to completed
+    // reward player
+    // if active quest, clear out active quest
+    let event = new CustomEvent("onQuestComplete", {
+      detail: {
+        quest: quest,
+      },
+    });
+    document.dispatchEvent(event);
+  }
+  defaultOnQuestCancelled(quest: Quest, state: any): void {
+    // move quest to cancelled
+    // if active quest, clear out active quest
+
+    let event = new CustomEvent("onQuestCancelled", {
+      detail: {
+        quest: quest,
+      },
+    });
+    document.dispatchEvent(event);
+  }
+
   update() {
     this.openQuests.forEach(q => q.update());
   }
@@ -87,7 +123,17 @@ export class QuestTree {
   id: string = "";
   nodes: Quest[] = [];
   edges: QuestEdge[] = [];
-  constructor() {}
+  defaultOnComplete: (quest: Quest, state: any) => void;
+  defaultOnCancelled: (quest: Quest, state: any) => void;
+
+  constructor(complete: (quest: Quest, state: any) => void, cancel: (quest: Quest, state: any) => void) {
+    this.defaultOnComplete = complete;
+    this.defaultOnCancelled = cancel;
+  }
+
+  createQuest(quest: QuestConfig): Quest {
+    return new Quest(quest, this);
+  }
 
   addQuest(quest: Quest, edgeConfig?: QuestEdgeConfig) {
     if (edgeConfig) {
@@ -146,14 +192,20 @@ export class Quest {
   reward: Reward<any>;
   onComplete: onQuestComplete = () => {};
   onCancelled: onQuestCancelled = () => {};
+  parent: QuestTree;
 
-  constructor(config: QuestConfig) {
+  constructor(config: QuestConfig, tree: QuestTree) {
     this.id = config.id;
     this.description = config.description;
     this.giver = config.giver;
     this.name = config.name;
-    this.onComplete = config.onComplete;
+    this.parent = tree;
+
+    if (config.onComplete) this.onComplete = config.onComplete;
+    else this.onComplete = this.parent.defaultOnComplete;
     if (config.onCancelled) this.onCancelled = config.onCancelled;
+    else this.onCancelled = this.parent.defaultOnCancelled;
+
     if (config.isCancelled) this.isCancelled = config.isCancelled;
     this.isCompleted = config.isComplete;
     this.state = config.state;

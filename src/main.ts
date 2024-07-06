@@ -39,7 +39,7 @@ export class QuestUUID {
 }
 
 const myQuestManager = new QuestManager();
-const myTree = myQuestManager.createTree();
+export const myTree = myQuestManager.createTree();
 
 export const gamestate = {
   player: {
