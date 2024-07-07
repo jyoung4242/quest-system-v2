@@ -19,22 +19,13 @@ await game.start();
 
 // setup quest manager
 export const myQuestManager = new QuestManager();
-export const myTree = myQuestManager.createTree();
+
+console.log("myQuestManager", myQuestManager);
+export const myTree = myQuestManager.createTree("Main Quest");
+console.log("new quest tree created", myTree);
 
 game.currentScene.onPreUpdate = () => {
   myQuestManager.update();
 };
 
-console.log("myQuestManager", myQuestManager);
-
 setupTreeQuests();
-
-setTimeout(() => {
-  const testEvent = new CustomEvent("testEvent", {
-    detail: {
-      test: "test",
-    },
-  });
-  console.log("testEvent", testEvent);
-  document.dispatchEvent(testEvent);
-}, 3000);

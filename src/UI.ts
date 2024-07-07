@@ -1,4 +1,19 @@
-export const model = {};
+import { gamestate } from "./gamestate";
+
+export const model = {
+  clickhandler: () => {
+    gamestate.player.monstersKilled += 1;
+    console.log("killing monster", gamestate.player.monstersKilled);
+  },
+  testEvent: () => {
+    const myEvent = new CustomEvent("testEvent", {
+      detail: {
+        test: "test",
+      },
+    });
+    document.dispatchEvent(myEvent);
+  },
+};
 export const template = `
 <style> 
     canvas{ 
@@ -7,7 +22,18 @@ export const template = `
         left:50%; 
         transform: translate(-50% , -50%); 
     }
+        .buttondiv{
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50% , -50%);
+        }
 </style> 
 <div> 
     <canvas id='cnv'> </canvas> 
+    <div class="buttondiv">
+      <button \${click@=>clickhandler}>kill monster</button>
+      <button \${click@=>testEvent}>game event</button>
+    </div>
+    
 </div>`;

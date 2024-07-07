@@ -1,7 +1,7 @@
 // Types
 
 // quest enabled is for quest edges to check if they can be enabled
-export type isQuestEnabled = (state: any, parentstate?: any) => boolean;
+export type isQuestEnabled = (state: any, parent: Quest) => boolean;
 
 // quest complete is for quest to check if they have been completed
 export type isQuestComplete = (state: any) => boolean;
@@ -16,7 +16,7 @@ export type onQuestComplete = (quest: Quest, state: any) => void;
 export type onQuestCancelled = (quest: Quest, state: any) => void;
 
 // rewardConfig, used to define the reference to the data store
-export type Reward<T> = T;
+export type Reward = (state: any) => void;
 
 // Events
 
@@ -31,7 +31,7 @@ export type QuestConfig = {
   name: string;
   giver: string;
   description: string;
-  reward: Reward<any>;
+  reward: Reward;
   isComplete: isQuestComplete;
   isCancelled?: isQuestCancelled;
   state: any;
@@ -56,6 +56,7 @@ enum QuestEdgeStatus {
 
 export enum QuestStatus {
   Active = "active",
+  Inactive = "inactive",
   Open = "open",
   Completed = "completed",
   Cancelled = "cancelled",
@@ -76,8 +77,8 @@ export class QuestManager {
     this.onCancelled = this.defaultOnQuestCancelled;
   }
 
-  createTree() {
-    const newQuestTree = new QuestTree(this.onComplete, this.onCancelled);
+  createTree(name: string) {
+    const newQuestTree = new QuestTree(name, this, this.onComplete, this.onCancelled);
     this.openQuests.push(newQuestTree);
     return newQuestTree;
   }
@@ -94,17 +95,51 @@ export class QuestManager {
   }
 
   defaultOnQuestComplete(quest: Quest, state: any): void {
-    // move quest to completed
-    // reward player
-    // if active quest, clear out active quest
-    // if quest has an eventlistener, clean it up
-    if (quest.listener && quest.onEvent) document.removeEventListener(quest.listener, quest.onEvent);
-    let event = new CustomEvent("onQuestComplete", {
-      detail: {
-        quest: quest,
-      },
-    });
-    document.dispatchEvent(event);
+    console.log("quest complete", quest);
+
+    if (this instanceof Quest) {
+      // for each edge child for quest, update
+      quest.children.forEach(edge => edge.update());
+
+      // move quest to completed
+      // reward player
+      quest.reward(state);
+      console.log();
+
+      // if active quest, clear out active quest
+      // if quest has an eventlistener, clean it up
+      if (quest.listener && quest.onEvent) document.removeEventListener(quest.listener, quest.onEvent);
+      let event = new CustomEvent("onQuestComplete", {
+        detail: {
+          quest: quest,
+        },
+      });
+      document.dispatchEvent(event);
+
+      //if quest has children, assign next quest
+      quest.children.forEach(child => {
+        if (child.status === QuestEdgeStatus.enabled) {
+          console.log("assigning next quest", child.child);
+
+          child.child.status = QuestStatus.Open;
+          child.status = QuestEdgeStatus.disabled;
+          let event = new CustomEvent("onNewQuestStarting", {
+            detail: {
+              quest: quest,
+            },
+          });
+          document.dispatchEvent(event);
+        }
+      });
+
+      // if quest has no children, close tree
+
+      if (quest.children.length === 0) {
+        this.parent.parent.closeTree(quest.parent);
+      }
+
+      console.log("Quest Manager", this.parent.parent);
+    }
   }
   defaultOnQuestCancelled(quest: Quest, state: any): void {
     // move quest to cancelled
@@ -125,13 +160,20 @@ export class QuestManager {
 }
 
 export class QuestTree {
+  name: string = "Quest Tree";
   id: string = "";
   nodes: Quest[] = [];
   edges: QuestEdge[] = [];
   defaultOnComplete: (quest: Quest, state: any) => void;
   defaultOnCancelled: (quest: Quest, state: any) => void;
 
-  constructor(complete: (quest: Quest, state: any) => void, cancel: (quest: Quest, state: any) => void) {
+  constructor(
+    name: string,
+    public parent: QuestManager,
+    complete: (quest: Quest, state: any) => void,
+    cancel: (quest: Quest, state: any) => void
+  ) {
+    this.name = name;
     this.defaultOnComplete = complete;
     this.defaultOnCancelled = cancel;
   }
@@ -168,9 +210,21 @@ export class QuestTree {
       this.edges.push(newQuestEdge);
     }
     this.nodes.push(quest);
+    if (this.nodes.length == 1) {
+      quest.status = QuestStatus.Open;
+      let event = new CustomEvent("onNewQuestStarting", {
+        detail: {
+          quest: quest,
+        },
+      });
+      document.dispatchEvent(event);
+    }
   }
 
-  update() {}
+  update() {
+    this.edges.forEach(e => e.update());
+    this.nodes.forEach(q => q.update());
+  }
 }
 
 export class QuestEdge {
@@ -190,7 +244,7 @@ export class QuestEdge {
   }
 
   update() {
-    if (this.prereq(this.state, this.parent.state)) {
+    if (this.prereq(this.state, this.parent)) {
       this.status = QuestEdgeStatus.enabled;
     } else {
       this.status = QuestEdgeStatus.disabled;
@@ -205,10 +259,10 @@ export class Quest {
   description: string = "";
   isCompleted: isQuestComplete = () => false;
   isCancelled: isQuestCancelled = () => false;
-  status: QuestStatus = QuestStatus.Active;
+  status: QuestStatus = QuestStatus.Inactive;
   children: QuestEdge[] = [];
   state: any;
-  reward: Reward<any>;
+  reward: Reward;
   onComplete: onQuestComplete = () => {};
   onCancelled: onQuestCancelled = () => {};
   parent: QuestTree;
@@ -233,8 +287,6 @@ export class Quest {
     this.reward = config.reward;
 
     if (config.listener && config.eventCallback) {
-      console.log("setting listener", config.listener);
-
       this.listener = config.listener;
       this.onEvent = config.eventCallback;
       document.addEventListener(this.listener, (e: Event) => this.onEvent(e as CustomEvent));
@@ -249,11 +301,16 @@ export class Quest {
     if (this.status === QuestStatus.Active || this.status === QuestStatus.Open) {
       // check if quest completed
       if (this.isCompleted(this.state)) {
+        console.log("quest completed", this.id);
+
         this.status = QuestStatus.Completed;
-        // do something here when quest completed
+
+        this.onComplete(this, this.state);
       } else if (this.isCancelled && this.isCancelled(this.state)) {
+        console.log("quest cancelled", this.id);
+
         this.status = QuestStatus.Cancelled;
-        // do something here when quest cancelled
+        this.onCancelled(this, this.state);
       }
     }
   }

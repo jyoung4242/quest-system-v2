@@ -2,9 +2,9 @@ import { QuestConfig, Reward, isQuestComplete } from "../QuestManager";
 import { QuestUUID } from "../../utility";
 import { gamestate } from "../../gamestate";
 
-const reward: Reward<{}> = {
-  gold: 100,
-  exp: 100,
+const reward: Reward = (state: any) => {
+  state.gold += 100;
+  state.exp += 100;
 };
 
 const questComplete: isQuestComplete = (state: any): boolean => {
@@ -17,13 +17,11 @@ export const quest1config: QuestConfig = {
   description: "My Quest Description",
   giver: "Me",
   reward: reward,
-  onComplete: () => {
-    console.log("quest complete");
-  },
+
   state: gamestate,
   isComplete: questComplete,
   listener: "testEvent",
   eventCallback: (e: Event) => {
-    console.log("my custom event fired!!!", e);
+    console.log("This is my quest receiving game event", e);
   },
 };
