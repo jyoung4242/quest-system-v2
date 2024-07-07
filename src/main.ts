@@ -28,3 +28,13 @@ game.currentScene.onPreUpdate = () => {
 console.log("myQuestManager", myQuestManager);
 
 setupTreeQuests();
+
+setTimeout(() => {
+  const testEvent = new CustomEvent("testEvent", {
+    detail: {
+      test: "test",
+    },
+  });
+  console.log("testEvent", testEvent);
+  document.dispatchEvent(testEvent);
+}, 3000);

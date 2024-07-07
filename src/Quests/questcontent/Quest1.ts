@@ -1,4 +1,4 @@
-import { Reward, isQuestComplete } from "../QuestManager";
+import { QuestConfig, Reward, isQuestComplete } from "../QuestManager";
 import { QuestUUID } from "../../utility";
 import { gamestate } from "../../gamestate";
 
@@ -11,7 +11,7 @@ const questComplete: isQuestComplete = (state: any): boolean => {
   return state.player.monstersKilled >= 5;
 };
 
-export const quest1config = {
+export const quest1config: QuestConfig = {
   id: QuestUUID.generateUUID(),
   name: "My Quest",
   description: "My Quest Description",
@@ -22,4 +22,8 @@ export const quest1config = {
   },
   state: gamestate,
   isComplete: questComplete,
+  listener: "testEvent",
+  eventCallback: (e: Event) => {
+    console.log("my custom event fired!!!", e);
+  },
 };

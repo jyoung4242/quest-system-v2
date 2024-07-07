@@ -37,6 +37,8 @@ export type QuestConfig = {
   state: any;
   onComplete?: onQuestComplete;
   onCancelled?: onQuestCancelled;
+  listener?: string;
+  eventCallback?: EventListener;
 };
 
 type QuestEdgeConfig = {
@@ -95,6 +97,8 @@ export class QuestManager {
     // move quest to completed
     // reward player
     // if active quest, clear out active quest
+    // if quest has an eventlistener, clean it up
+    if (quest.listener && quest.onEvent) document.removeEventListener(quest.listener, quest.onEvent);
     let event = new CustomEvent("onQuestComplete", {
       detail: {
         quest: quest,
@@ -105,6 +109,7 @@ export class QuestManager {
   defaultOnQuestCancelled(quest: Quest, state: any): void {
     // move quest to cancelled
     // if active quest, clear out active quest
+    if (quest.listener && quest.onEvent) document.removeEventListener(quest.listener, quest.onEvent);
 
     let event = new CustomEvent("onQuestCancelled", {
       detail: {
@@ -207,6 +212,8 @@ export class Quest {
   onComplete: onQuestComplete = () => {};
   onCancelled: onQuestCancelled = () => {};
   parent: QuestTree;
+  listener: string = "";
+  onEvent: EventListener = () => {};
 
   constructor(config: QuestConfig, tree: QuestTree) {
     this.id = config.id;
@@ -224,6 +231,14 @@ export class Quest {
     this.isCompleted = config.isComplete;
     this.state = config.state;
     this.reward = config.reward;
+
+    if (config.listener && config.eventCallback) {
+      console.log("setting listener", config.listener);
+
+      this.listener = config.listener;
+      this.onEvent = config.eventCallback;
+      document.addEventListener(this.listener, (e: Event) => this.onEvent(e as CustomEvent));
+    }
   }
 
   assignNextQuestEdge(nextQuest: QuestEdge) {
