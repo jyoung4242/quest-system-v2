@@ -13,6 +13,9 @@ export const model = {
     });
     document.dispatchEvent(myEvent);
   },
+  cancelQuest: () => {
+    gamestate.cancel = true;
+  },
 };
 export const template = `
 <style> 
@@ -24,16 +27,25 @@ export const template = `
     }
         .buttondiv{
             position: fixed;
-            top: 50%;
+            top: 30%;
             left: 50%;
             transform: translate(-50% , -50%);
         }
+
+        #cy{
+          position: fixed;
+          top: 55%;
+          left: 50%;
+          transform: translate(-50% , -50%);
+        }
 </style> 
-<div> 
+<div id="root"> 
     <canvas id='cnv'> </canvas> 
     <div class="buttondiv">
       <button \${click@=>clickhandler}>kill monster</button>
       <button \${click@=>testEvent}>game event</button>
+      <button \${click@=>cancelQuest}>Cancel Quest</button>
     </div>
+    
     
 </div>`;

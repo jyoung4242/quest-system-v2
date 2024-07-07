@@ -5,4 +5,5 @@ export const gamestate = {
     exp: 0,
     monstersKilled: 0,
   },
+  cancel: false,
 };

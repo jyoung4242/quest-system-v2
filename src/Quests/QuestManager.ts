@@ -65,6 +65,7 @@ export enum QuestStatus {
 // Classes
 
 export class QuestManager {
+  cy: any;
   openQuests: QuestTree[] = [];
   activeQuest: Quest | undefined;
   completedQuests: QuestTree[] = [];
@@ -77,13 +78,14 @@ export class QuestManager {
     this.onCancelled = this.defaultOnQuestCancelled;
   }
 
-  createTree(name: string) {
-    const newQuestTree = new QuestTree(name, this, this.onComplete, this.onCancelled);
+  createTree(name: string, id: string) {
+    const newQuestTree = new QuestTree(name, id, this, this.onComplete, this.onCancelled);
     this.openQuests.push(newQuestTree);
     return newQuestTree;
   }
 
   closeTree(tree: QuestTree, cancelled?: boolean) {
+    debugger;
     if (cancelled) this.cancelledQuests.push(tree);
     else this.completedQuests.push(tree);
     const index = this.openQuests.indexOf(tree);
@@ -92,6 +94,7 @@ export class QuestManager {
 
   makeQuestActive(quest: Quest) {
     this.activeQuest = quest;
+    quest.status = QuestStatus.Active;
   }
 
   defaultOnQuestComplete(quest: Quest, state: any): void {
@@ -104,7 +107,7 @@ export class QuestManager {
       // move quest to completed
       // reward player
       quest.reward(state);
-      console.log();
+      console.log("reward: ", state.player);
 
       // if active quest, clear out active quest
       // if quest has an eventlistener, clean it up
@@ -132,9 +135,8 @@ export class QuestManager {
         }
       });
 
-      // if quest has no children, close tree
-
-      if (quest.children.length === 0) {
+      // if quest has no Active children, close quest
+      if (quest.children.filter(edge => edge.status === QuestEdgeStatus.enabled).length === 0) {
         this.parent.parent.closeTree(quest.parent);
       }
 
@@ -142,16 +144,43 @@ export class QuestManager {
     }
   }
   defaultOnQuestCancelled(quest: Quest, state: any): void {
-    // move quest to cancelled
-    // if active quest, clear out active quest
-    if (quest.listener && quest.onEvent) document.removeEventListener(quest.listener, quest.onEvent);
+    console.log("quest cancelled", quest);
 
-    let event = new CustomEvent("onQuestCancelled", {
-      detail: {
-        quest: quest,
-      },
-    });
-    document.dispatchEvent(event);
+    if (this instanceof Quest) {
+      // for each edge child for quest, update
+      quest.children.forEach(edge => edge.update());
+
+      // if active quest, clear out active quest
+      if (quest.listener && quest.onEvent) document.removeEventListener(quest.listener, quest.onEvent);
+
+      let event = new CustomEvent("onQuestCancelled", {
+        detail: {
+          quest: quest,
+        },
+      });
+      document.dispatchEvent(event);
+
+      //if quest has children, assign next quest
+      quest.children.forEach(child => {
+        if (child.status === QuestEdgeStatus.enabled) {
+          console.log("assigning next quest", child.child);
+
+          child.child.status = QuestStatus.Open;
+          child.status = QuestEdgeStatus.disabled;
+          let event = new CustomEvent("onNewQuestStarting", {
+            detail: {
+              quest: quest,
+            },
+          });
+          document.dispatchEvent(event);
+        }
+      });
+      // if quest has no Active children, close quest
+      if (quest.children.filter(edge => edge.status === QuestEdgeStatus.enabled).length === 0) {
+        this.parent.parent.closeTree(quest.parent, true);
+      }
+      console.log("Quest Manager", this.parent.parent);
+    }
   }
 
   update() {
@@ -169,11 +198,13 @@ export class QuestTree {
 
   constructor(
     name: string,
+    id: string,
     public parent: QuestManager,
     complete: (quest: Quest, state: any) => void,
     cancel: (quest: Quest, state: any) => void
   ) {
     this.name = name;
+    this.id = id;
     this.defaultOnComplete = complete;
     this.defaultOnCancelled = cancel;
   }
@@ -192,6 +223,12 @@ export class QuestTree {
     const foundquests = this.nodes.find(q => q.id === id);
     if (foundquests) return foundquests;
     return undefined;
+  }
+
+  addEdge(edge: QuestEdgeConfig) {
+    const newQuestEdge = new QuestEdge(edge);
+    this.edges.push(newQuestEdge);
+    edge.parentQuest.assignNextQuestEdge(newQuestEdge);
   }
 
   addQuest(quest: Quest, edgeConfig?: QuestEdgeConfig) {

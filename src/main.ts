@@ -1,9 +1,10 @@
 import "./style.css";
 import { UI } from "@peasy-lib/peasy-ui";
 import { Engine, DisplayMode } from "excalibur";
-import { QuestManager } from "./Quests/QuestManager";
+import { QuestManager, QuestTree } from "./Quests/QuestManager";
 import { model, template } from "./UI";
 import { setupTreeQuests } from "./Quests/questcontent/tree";
+import { QuestUUID, showGraph } from "./utility";
 
 // setup peasy
 await UI.create(document.body, model, template).attached;
@@ -21,7 +22,7 @@ await game.start();
 export const myQuestManager = new QuestManager();
 
 console.log("myQuestManager", myQuestManager);
-export const myTree = myQuestManager.createTree("Main Quest");
+export const myTree = myQuestManager.createTree("Main Quest", QuestUUID.generateUUID());
 console.log("new quest tree created", myTree);
 
 game.currentScene.onPreUpdate = () => {
@@ -29,3 +30,7 @@ game.currentScene.onPreUpdate = () => {
 };
 
 setupTreeQuests();
+
+setTimeout(() => {
+  showGraph(myTree);
+}, 1000);

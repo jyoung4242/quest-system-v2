@@ -1,5 +1,5 @@
-[ ] close quest
-[ ] update state with reward
-[ ] close graph
-[ ] manage active quests
+[x] close quest
+[x] update state with reward
+[x] close graph
+[x] manage active quests
 [ ] launch parallel quests
