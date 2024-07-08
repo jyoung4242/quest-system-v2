@@ -18,7 +18,7 @@ export type onQuestCancelled = (quest: Quest, state: any) => void;
 // rewardConfig, used to define the reference to the data store
 export type Reward = (state: any) => void;
 
-export type QuestConfig = {
+export type QuestConfig<State = any> = {
   id: string;
   name: string;
   giver: string;
@@ -26,19 +26,17 @@ export type QuestConfig = {
   reward: Reward;
   isComplete: isQuestComplete;
   isCancelled?: isQuestCancelled;
-  state: any;
-  onComplete?: onQuestComplete;
-  onCancelled?: onQuestCancelled;
+  state: State;
   listener?: string;
   eventCallback?: EventListener;
 };
 
-export type QuestEdgeConfig = {
+export type QuestEdgeConfig<State = any> = {
   id: string;
   nextQuest: Quest;
   parentQuest: Quest;
   prereqquest: isQuestEnabled;
-  state: any;
+  state: State;
 };
 
 enum QuestEdgeStatus {
@@ -47,7 +45,6 @@ enum QuestEdgeStatus {
 }
 
 export enum QuestStatus {
-  Active = "active",
   Inactive = "inactive",
   Open = "open",
   Completed = "completed",
@@ -57,122 +54,24 @@ export enum QuestStatus {
 // Classes
 
 export class QuestManager {
-  cy: any;
   openQuests: QuestTree[] = [];
   activeQuest: Quest | undefined;
   completedQuests: QuestTree[] = [];
   cancelledQuests: QuestTree[] = [];
-  onComplete: (quest: Quest, state: any) => void;
-  onCancelled: (quest: Quest, state: any) => void;
 
-  constructor() {
-    this.onComplete = this.defaultOnQuestComplete;
-    this.onCancelled = this.defaultOnQuestCancelled;
-  }
+  constructor() {}
 
   createTree(name: string, id: string) {
-    const newQuestTree = new QuestTree(name, id, this, this.onComplete, this.onCancelled);
+    const newQuestTree = new QuestTree(name, id, this);
     this.openQuests.push(newQuestTree);
     return newQuestTree;
   }
 
   closeTree(tree: QuestTree, cancelled?: boolean) {
-    debugger;
     if (cancelled) this.cancelledQuests.push(tree);
     else this.completedQuests.push(tree);
     const index = this.openQuests.indexOf(tree);
     this.openQuests.splice(index, 1);
-  }
-
-  makeQuestActive(quest: Quest) {
-    this.activeQuest = quest;
-    quest.status = QuestStatus.Active;
-  }
-
-  defaultOnQuestComplete(quest: Quest, state: any): void {
-    console.log("quest complete", quest);
-
-    if (this instanceof Quest) {
-      // for each edge child for quest, update
-      quest.children.forEach(edge => edge.update());
-
-      // move quest to completed
-      // reward player
-      quest.reward(state);
-      console.log("reward: ", state.player);
-
-      // if active quest, clear out active quest
-      // if quest has an eventlistener, clean it up
-      if (quest.listener && quest.onEvent) document.removeEventListener(quest.listener, quest.onEvent);
-      let event = new CustomEvent("onQuestComplete", {
-        detail: {
-          quest: quest,
-        },
-      });
-      document.dispatchEvent(event);
-
-      //if quest has children, assign next quest
-      quest.children.forEach(child => {
-        if (child.status === QuestEdgeStatus.enabled) {
-          console.log("assigning next quest", child.child);
-
-          child.child.status = QuestStatus.Open;
-          child.status = QuestEdgeStatus.disabled;
-          let event = new CustomEvent("onNewQuestStarting", {
-            detail: {
-              quest: quest,
-            },
-          });
-          document.dispatchEvent(event);
-        }
-      });
-
-      // if quest has no Active children, close quest
-      if (quest.children.filter(edge => edge.status === QuestEdgeStatus.enabled).length === 0) {
-        this.parent.parent.closeTree(quest.parent);
-      }
-
-      console.log("Quest Manager", this.parent.parent);
-    }
-  }
-  defaultOnQuestCancelled(quest: Quest, state: any): void {
-    console.log("quest cancelled", quest);
-
-    if (this instanceof Quest) {
-      // for each edge child for quest, update
-      quest.children.forEach(edge => edge.update());
-
-      // if active quest, clear out active quest
-      if (quest.listener && quest.onEvent) document.removeEventListener(quest.listener, quest.onEvent);
-
-      let event = new CustomEvent("onQuestCancelled", {
-        detail: {
-          quest: quest,
-        },
-      });
-      document.dispatchEvent(event);
-
-      //if quest has children, assign next quest
-      quest.children.forEach(child => {
-        if (child.status === QuestEdgeStatus.enabled) {
-          console.log("assigning next quest", child.child);
-
-          child.child.status = QuestStatus.Open;
-          child.status = QuestEdgeStatus.disabled;
-          let event = new CustomEvent("onNewQuestStarting", {
-            detail: {
-              quest: quest,
-            },
-          });
-          document.dispatchEvent(event);
-        }
-      });
-      // if quest has no Active children, close quest
-      if (quest.children.filter(edge => edge.status === QuestEdgeStatus.enabled).length === 0) {
-        this.parent.parent.closeTree(quest.parent, true);
-      }
-      console.log("Quest Manager", this.parent.parent);
-    }
   }
 
   update() {
@@ -185,20 +84,10 @@ export class QuestTree {
   id: string = "";
   nodes: Quest[] = [];
   edges: QuestEdge[] = [];
-  defaultOnComplete: (quest: Quest, state: any) => void;
-  defaultOnCancelled: (quest: Quest, state: any) => void;
 
-  constructor(
-    name: string,
-    id: string,
-    public parent: QuestManager,
-    complete: (quest: Quest, state: any) => void,
-    cancel: (quest: Quest, state: any) => void
-  ) {
+  constructor(name: string, id: string, public parent: QuestManager) {
     this.name = name;
     this.id = id;
-    this.defaultOnComplete = complete;
-    this.defaultOnCancelled = cancel;
   }
 
   createQuest(quest: QuestConfig): Quest {
@@ -224,8 +113,6 @@ export class QuestTree {
   }
 
   addQuest(quest: Quest, edgeConfig?: QuestEdgeConfig) {
-    console.log("adding quest", quest);
-
     if (edgeConfig) {
       const edge: QuestEdgeConfig = {
         id: edgeConfig.id,
@@ -256,13 +143,13 @@ export class QuestTree {
   }
 }
 
-export class QuestEdge {
+export class QuestEdge<State = any> {
   id: string = "";
   status: QuestEdgeStatus = QuestEdgeStatus.disabled;
   parent: Quest;
   prereq: isQuestEnabled;
   child: Quest;
-  state: any;
+  state: State;
 
   constructor(config: QuestEdgeConfig) {
     this.id = config.id;
@@ -281,7 +168,7 @@ export class QuestEdge {
   }
 }
 
-export class Quest {
+export class Quest<State = any> {
   id: string = "";
   giver: string = "";
   name: string = "";
@@ -290,10 +177,9 @@ export class Quest {
   isCancelled: isQuestCancelled = () => false;
   status: QuestStatus = QuestStatus.Inactive;
   children: QuestEdge[] = [];
-  state: any;
+  state: State;
   reward: Reward;
-  onComplete: onQuestComplete = () => {};
-  onCancelled: onQuestCancelled = () => {};
+
   parent: QuestTree;
   listener: string = "";
   onEvent: EventListener = () => {};
@@ -304,11 +190,6 @@ export class Quest {
     this.giver = config.giver;
     this.name = config.name;
     this.parent = tree;
-
-    if (config.onComplete) this.onComplete = config.onComplete;
-    else this.onComplete = this.parent.defaultOnComplete;
-    if (config.onCancelled) this.onCancelled = config.onCancelled;
-    else this.onCancelled = this.parent.defaultOnCancelled;
 
     if (config.isCancelled) this.isCancelled = config.isCancelled;
     this.isCompleted = config.isComplete;
@@ -322,25 +203,86 @@ export class Quest {
     }
   }
 
+  onQuestComplete(quest: Quest, state: any): void {
+    // for each edge child for quest, update
+    quest.children.forEach(edge => edge.update());
+
+    // reward player
+    quest.reward(state);
+
+    // if quest has an eventlistener, clean it up
+    if (quest.listener && quest.onEvent) document.removeEventListener(quest.listener, quest.onEvent);
+    let event = new CustomEvent("onQuestComplete", {
+      detail: {
+        quest: quest,
+      },
+    });
+    document.dispatchEvent(event);
+
+    //if quest has children, assign next quest
+    quest.children.forEach(child => {
+      if (child.status === QuestEdgeStatus.enabled) {
+        child.child.status = QuestStatus.Open;
+        child.status = QuestEdgeStatus.disabled;
+        let event = new CustomEvent("onNewQuestStarting", {
+          detail: {
+            quest: quest,
+          },
+        });
+        document.dispatchEvent(event);
+      }
+    });
+
+    // if quest has no Active children, close quest
+    if (quest.children.filter(edge => edge.status === QuestEdgeStatus.enabled).length === 0) {
+      this.parent.parent.closeTree(quest.parent);
+    }
+  }
+  onQuestCancelled(quest: Quest, state: any): void {
+    // for each edge child for quest, update
+    quest.children.forEach(edge => edge.update());
+
+    if (quest.listener && quest.onEvent) document.removeEventListener(quest.listener, quest.onEvent);
+
+    let event = new CustomEvent("onQuestCancelled", {
+      detail: {
+        quest: quest,
+      },
+    });
+    document.dispatchEvent(event);
+
+    //if quest has children, assign next quest
+    quest.children.forEach(child => {
+      if (child.status === QuestEdgeStatus.enabled) {
+        child.child.status = QuestStatus.Open;
+        child.status = QuestEdgeStatus.disabled;
+        let event = new CustomEvent("onNewQuestStarting", {
+          detail: {
+            quest: quest,
+          },
+        });
+        document.dispatchEvent(event);
+      }
+    });
+    // if quest has no open children, close quest
+    if (quest.children.filter(edge => edge.status === QuestEdgeStatus.enabled).length === 0) {
+      this.parent.parent.closeTree(quest.parent, true);
+    }
+  }
+
   assignNextQuestEdge(nextQuest: QuestEdge) {
     this.children.push(nextQuest);
   }
 
   update() {
-    if (this.status === QuestStatus.Active || this.status === QuestStatus.Open) {
-      // check if quest completed
-      if (this.isCompleted(this.state)) {
-        console.log("quest completed", this.id);
-
-        this.status = QuestStatus.Completed;
-
-        this.onComplete(this, this.state);
-      } else if (this.isCancelled && this.isCancelled(this.state)) {
-        console.log("quest cancelled", this.id);
-
-        this.status = QuestStatus.Cancelled;
-        this.onCancelled(this, this.state);
-      }
+    if (this.status != QuestStatus.Open) return;
+    // check if quest completed
+    if (this.isCompleted(this.state)) {
+      this.status = QuestStatus.Completed;
+      this.onQuestComplete(this, this.state);
+    } else if (this.isCancelled && this.isCancelled(this.state)) {
+      this.status = QuestStatus.Cancelled;
+      this.onQuestCancelled(this, this.state);
     }
   }
 }

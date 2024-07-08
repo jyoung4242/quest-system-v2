@@ -219,42 +219,6 @@ describe("QuestManager", () => {
     expect(quest2.status).toBe(QuestStatus.Open);
   });
 
-  it("should make quest active", () => {
-    const treeId = QuestUUID.generateUUID();
-    const treeName = "Test Tree";
-    const questId1 = QuestUUID.generateUUID();
-    const questName1 = "Test Quest 1";
-
-    const questTree = myQuestManager.createTree(treeName, treeId);
-    const state = {
-      gold: 0,
-      xp: 0,
-    };
-    const quest1 = questTree.createQuest({
-      id: questId1,
-      name: questName1,
-      description: "Test Description",
-      giver: "Test Giver",
-      reward: state => {
-        state.gold += 100;
-        state.xp += 10;
-      },
-      state: state,
-      isComplete: () => false,
-      isCancelled: () => false,
-    });
-
-    questTree.addQuest(quest1);
-
-    //check quest status
-    expect(quest1.status).toBe(QuestStatus.Open);
-
-    myQuestManager.makeQuestActive(quest1);
-
-    //check quest status
-    expect(quest1.status).toBe(QuestStatus.Active);
-  });
-
   //test for cancelling quest
   it("should cancel quest", () => {
     const treeId = QuestUUID.generateUUID();
@@ -566,5 +530,42 @@ describe("QuestManager", () => {
     myQuestManager.update();
     expect(quest1.status).toBe(QuestStatus.Cancelled);
     expect(quest2.status).toBe(QuestStatus.Open);
+  });
+
+  it("should move quest to completed on closure", () => {
+    const treeId = QuestUUID.generateUUID();
+    const treeName = "Test Tree";
+    const questId1 = QuestUUID.generateUUID();
+    const questName1 = "Test Quest 1";
+
+    const questTree = myQuestManager.createTree(treeName, treeId);
+    const state = {
+      gold: 0,
+      xp: 0,
+    };
+    const quest1 = questTree.createQuest({
+      id: questId1,
+      name: questName1,
+      description: "Test Description",
+      giver: "Test Giver",
+      reward: state => {
+        state.gold += 100;
+        state.xp += 10;
+      },
+      state: state,
+      isComplete: () => {
+        return state.gold >= 100;
+      },
+      isCancelled: () => false,
+    });
+    questTree.addQuest(quest1);
+
+    expect(quest1.status).toBe(QuestStatus.Open);
+    myQuestManager.update();
+    state.gold = 100;
+    myQuestManager.update();
+    expect(quest1.status).toBe(QuestStatus.Completed);
+    expect(myQuestManager.completedQuests.length).toBe(1);
+    expect(myQuestManager.openQuests.length).toBe(0);
   });
 });
