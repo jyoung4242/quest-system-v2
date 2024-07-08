@@ -18,14 +18,6 @@ export type onQuestCancelled = (quest: Quest, state: any) => void;
 // rewardConfig, used to define the reference to the data store
 export type Reward = (state: any) => void;
 
-// Events
-
-// onQuestComplete when a quest is completed
-// onQuestCancelled when a quest is cancelled
-type MyEventDetail = {
-  quest: Quest;
-};
-
 export type QuestConfig = {
   id: string;
   name: string;
@@ -41,7 +33,7 @@ export type QuestConfig = {
   eventCallback?: EventListener;
 };
 
-type QuestEdgeConfig = {
+export type QuestEdgeConfig = {
   id: string;
   nextQuest: Quest;
   parentQuest: Quest;

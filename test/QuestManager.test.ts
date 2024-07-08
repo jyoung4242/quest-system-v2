@@ -1,5 +1,5 @@
 import { QueryManager } from "excalibur";
-import { Quest, QuestManager, QuestStatus } from "../src/Quests/QuestManager";
+import { Quest, QuestEdgeConfig, QuestManager, QuestStatus } from "../src/Quests/QuestManager";
 import { QuestUUID } from "../src/utility";
 
 import { describe, expect, it, beforeEach } from "vitest";
@@ -403,5 +403,168 @@ describe("QuestManager", () => {
       detail: "test",
     });
     document.dispatchEvent(myEvent);
+  });
+
+  it("should execute reward on successful quest completiont", () => {
+    const treeId = QuestUUID.generateUUID();
+    const treeName = "Test Tree";
+    const questId1 = QuestUUID.generateUUID();
+    const questName1 = "Test Quest 1";
+
+    const questTree = myQuestManager.createTree(treeName, treeId);
+
+    const state = {
+      gold: 0,
+      xp: 0,
+      questCompleted: false,
+    };
+    const quest1 = questTree.createQuest({
+      id: questId1,
+      name: questName1,
+      description: "Test Description",
+      giver: "Test Giver",
+      reward: state => {
+        state.gold += 100;
+        state.xp += 10;
+      },
+      state: state,
+      isComplete: state => {
+        return state.questCompleted;
+      },
+      isCancelled: () => false,
+    });
+
+    questTree.addQuest(quest1);
+
+    //check before closing quest
+    expect(state.gold).toBe(0);
+    expect(state.xp).toBe(0);
+    expect(state.questCompleted).toBe(false);
+    //close quest
+    state.questCompleted = true;
+    quest1.update();
+    //check after closing quest
+    expect(state.gold).toBe(100);
+    expect(state.xp).toBe(10);
+    expect(state.questCompleted).toBe(true);
+    expect(quest1.status).toBe(QuestStatus.Completed);
+  });
+
+  it("should add edge with the addQuest method", () => {
+    const treeId = QuestUUID.generateUUID();
+    const treeName = "Test Tree";
+    const questId1 = QuestUUID.generateUUID();
+    const questName1 = "Test Quest 1";
+    const questId2 = QuestUUID.generateUUID();
+    const questName2 = "Test Quest 2";
+
+    const questTree = myQuestManager.createTree(treeName, treeId);
+
+    const state = {
+      gold: 0,
+      xp: 0,
+    };
+    const quest1 = questTree.createQuest({
+      id: questId1,
+      name: questName1,
+      description: "Test Description",
+      giver: "Test Giver",
+      reward: state => {
+        state.gold += 100;
+        state.xp += 10;
+      },
+      state: state,
+      isComplete: () => false,
+      isCancelled: () => false,
+    });
+    const quest2 = questTree.createQuest({
+      id: questId2,
+      name: questName2,
+      description: "Test Description",
+      giver: "Test Giver",
+      reward: state => {
+        state.gold += 100;
+        state.xp += 10;
+      },
+      state: state,
+      isComplete: () => false,
+      isCancelled: () => false,
+    });
+
+    let edgeconf: QuestEdgeConfig = {
+      parentQuest: quest1,
+      id: QuestUUID.generateUUID(),
+      nextQuest: quest2,
+      prereqquest: (state, quest1) => {
+        return state.gold >= 100;
+      },
+      state: state,
+    };
+
+    questTree.addQuest(quest1);
+    questTree.addQuest(quest2, edgeconf);
+    expect(questTree.edges.length).toBe(1);
+  });
+
+  it("should cancel quest and check for edges for child quests", () => {
+    const treeId = QuestUUID.generateUUID();
+    const treeName = "Test Tree";
+    const questId1 = QuestUUID.generateUUID();
+    const questName1 = "Test Quest 1";
+    const questId2 = QuestUUID.generateUUID();
+    const questName2 = "Test Quest 2";
+
+    const questTree = myQuestManager.createTree(treeName, treeId);
+
+    const state = {
+      gold: 0,
+      xp: 0,
+      cancelFlag: false,
+    };
+    const quest1 = questTree.createQuest({
+      id: questId1,
+      name: questName1,
+      description: "Test Description",
+      giver: "Test Giver",
+      reward: state => {
+        state.gold += 100;
+        state.xp += 10;
+      },
+      state: state,
+      isComplete: () => false,
+      isCancelled: () => {
+        return state.cancelFlag;
+      },
+    });
+    const quest2 = questTree.createQuest({
+      id: questId2,
+      name: questName2,
+      description: "Test Description",
+      giver: "Test Giver",
+      reward: state => {
+        state.gold += 100;
+        state.xp += 10;
+      },
+      state: state,
+      isComplete: () => false,
+      isCancelled: () => false,
+    });
+
+    questTree.addQuest(quest1);
+    questTree.addQuest(quest2);
+    questTree.addEdge({
+      parentQuest: quest1,
+      nextQuest: quest2,
+      id: QuestUUID.generateUUID(),
+      prereqquest: (state, quest1) => {
+        return quest1.status === QuestStatus.Cancelled;
+      },
+      state: state,
+    });
+
+    state.cancelFlag = true;
+    myQuestManager.update();
+    expect(quest1.status).toBe(QuestStatus.Cancelled);
+    expect(quest2.status).toBe(QuestStatus.Open);
   });
 });
